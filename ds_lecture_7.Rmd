@@ -1,0 +1,146 @@
+
+---
+title: "Пример стат.анализа."
+author: "Леха Бурнаков."
+lang: russian
+output:
+  html_document:
+    theme: paper
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+---
+
+
+```{r get data and model, message = F, warning = F, results = 'hide', echo = F}
+
+rm(list = ls()); gc()
+
+setwd('C:/Users/burnakov_a/working_codes/experimental_codes/ds_lectures')
+
+## load libs ----------------
+
+library(data.table) #install.packages('data.table', dependencies = T)
+library(ggplot2)
+library(DT)
+
+
+## process dat ---------------------------------
+
+dt <- mtcars
+
+car_labels <- rownames(dt)
+
+setDT(dt)
+
+lmm <- 
+     lm(
+          mpg ~ hp
+          , data = dt
+     )
+
+summary(lmm)
+
+plot(lmm)
+
+### Probably this model is not robust
+
+plot(density(lmm$residuals))
+
+### residuals do not look Gaussian and symmetric
+
+res <- lmm$residuals
+
+kst <- ks.test(
+     x = res
+     , y = pnorm
+)
+
+ifelse(kst$p.value < 0.01, print('not normal'), print('is normal'))
+
+pred_dt <- as.data.table(
+     stats::predict.lm(
+          lmm
+          , newdata = dt
+          , interval = "prediction"
+          , level = 0.99
+     )
+)
+
+pred_dt[, steps := 1:nrow(pred_dt)]
+
+pred_dt[, Y := dt$mpg]
+
+
+## Plots ----
+
+plo1 <- ggplot(data = pred_dt) +
+     geom_line(
+          aes(
+               x = steps
+               , y = Y
+               )
+          , size = 1
+          , color = "black"
+          ) +
+     geom_line(
+          aes(
+               x = steps
+               , y = fit
+               )
+          , size = 1
+          , color = "red"
+          ) +
+     geom_line(
+          aes(
+               x = steps
+               , y = lwr
+               )
+          , size = 1
+          , color = "darkblue"
+          ) +
+     geom_line(
+          aes(
+               x = steps
+               , y = upr
+               )
+          , size = 1
+          , color = "blue"
+          ) +
+     theme_minimal() +
+     ggtitle('Линейная модель зависимости потребления бензина от лошадиных сил')
+
+```
+
+<br><br>
+
+### Таблица новостей с наивысшим потенциалом (все агентства)
+
+<br><br>
+
+```{r cite share table, results = 'asis', echo = F, format = "html"}
+
+datatable(
+     pred_dt
+     , rownames = F
+     , options = list(
+          pageLength = 10
+               )
+     )
+
+```
+
+<br><br>
+<br><br>
+
+### График потенциала (ТАСС)
+
+<br><br>
+
+```{r print plots2, echo = F, fig.width = 14, fig.height = 8, fig.align = "center", message = F, warning = F}
+
+print(plo1)
+
+```
+
